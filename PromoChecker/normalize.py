@@ -445,7 +445,15 @@ def standardize_fields(raw_product: Dict[str, Any], source: str) -> Dict[str, An
         standardized['reference'] = raw_product.get('reference', '')
         standardized['availability'] = raw_product.get('availability', '')
         standardized['brand'] = raw_product.get('brand', specs.get('brand', ''))
-        
+        # Ensure Tunisianet links always use the correct domain
+        link = raw_product.get('link', '')
+        if link and not link.startswith('http'):
+            link = 'https://www.tunisianet.com.tn' + (link if link.startswith('/') else '/' + link)
+        elif link and 'tunisianet' in link:
+            # Replace any wrong domain with the correct one
+            link = re.sub(r'https?://[^/]*tunisianet[^/]*', 'https://www.tunisianet.com.tn', link)
+        standardized['link'] = link
+        standardized['product_url'] = link
     elif source == 'spacenet':
         standardized['final_price'] = normalize_price(raw_product.get('final_price', ''))
         standardized['original_price'] = normalize_price(raw_product.get('original_price', ''))

@@ -3,7 +3,7 @@ import scrapy
 
 class TunisianetLaptopsSpider(scrapy.Spider):
     name = "tunisianet_laptops"
-    allowed_domains = ["tunisianet.com.tn"]
+    allowed_domains = ["www.tunisianet.com.tn"]
     start_urls = [
         "https://www.tunisianet.com.tn/702-ordinateur-portable?order=product.price.asc",
     ]
@@ -19,10 +19,9 @@ class TunisianetLaptopsSpider(scrapy.Spider):
     def parse(self, response):
         # Chaque bloc produit
         for product in response.css("div.thumbnail-container"):
-            link = product.css(
-                "a.thumbnail.product-thumbnail.first-img::attr(href)"
-            ).get()
-
+            link = product.css("a.thumbnail.product-thumbnail.first-img::attr(href)").get()
+            full_link = response.urljoin(link) if link else None
+            "link": full_link
             image = product.css(
                 "a.thumbnail.product-thumbnail.first-img img::attr(src)"
             ).get()
