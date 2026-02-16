@@ -1,0 +1,21 @@
+# PromoChecker (Python) dependencies
+# Install with: pip install -r requirements.txt
+#
+# Note: Frontend dependencies are managed separately in `frontend/package.json`.
+
+# API
+fastapi
+uvicorn
+pydantic
+python-dotenv
+psycopg2-binary
+
+# Automation / scheduling
+APScheduler
+
+# Scraping
+Scrapy
+scrapy-playwright
+playwright
+itemadapter
+

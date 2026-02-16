@@ -29,6 +29,17 @@ export interface PriceHistory {
   store_name: string;
 }
 
+export interface ProductListing {
+  store_name: string;
+  final_price: number | null;
+  original_price: number | null;
+  discount_percentage: number | null;
+  product_url: string;
+  image_url: string | null;
+  availability: string | null;
+  scraped_at: string; // ISO datetime
+}
+
 export interface ProductDetail {
   product_key: string;
   model: string;
@@ -45,7 +56,9 @@ export interface ProductDetail {
   highest_price: number;
   store_count: number;
   image_url: string | null;
-  price_history: PriceHistory[];
+  listings: ProductListing[];
+  // Optional: some backends may return this; keep for compatibility
+  price_history?: PriceHistory[];
 }
 
 export interface Deal {

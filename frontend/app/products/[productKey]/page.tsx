@@ -14,6 +14,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<ProductDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [imageFailed, setImageFailed] = useState(false);
 
   useEffect(() => {
     loadProduct();
@@ -23,6 +24,7 @@ export default function ProductDetailPage() {
     try {
       setLoading(true);
       setError(null);
+      setImageFailed(false);
       const data = await getProductDetail(productKey);
       setProduct(data);
     } catch (err) {
@@ -57,14 +59,9 @@ export default function ProductDetailPage() {
     );
   }
 
-  const pricesByStore = product.price_history.reduce((acc, price) => {
-    if (!acc[price.store_name] || new Date(price.date) > new Date(acc[price.store_name].date)) {
-      acc[price.store_name] = price;
-    }
-    return acc;
-  }, {} as Record<string, typeof product.price_history[0]>);
-
-  const currentPrices = Object.values(pricesByStore).sort((a, b) => a.price - b.price);
+  const currentListings = (product.listings || [])
+    .filter((l) => l.final_price !== null && l.final_price !== undefined)
+    .sort((a, b) => (a.final_price as number) - (b.final_price as number));
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50">
@@ -110,22 +107,16 @@ export default function ProductDetailPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
               {/* Image */}
               <div className="relative aspect-square bg-gray-50 rounded-lg overflow-hidden mb-6">
-                {product.image_url ? (
+                {product.image_url && !imageFailed ? (
                   <Image
                     src={product.image_url}
                     alt={product.model}
                     fill
                     className="object-contain p-4"
-                    onError={(e) => {
-                      const target = e.target as HTMLImageElement;
-                      target.style.display = 'none';
-                      if (target.nextElementSibling) {
-                        (target.nextElementSibling as HTMLElement).style.display = 'flex';
-                      }
-                    }}
+                    onError={() => setImageFailed(true)}
                   />
                 ) : null}
-                <div className={`flex items-center justify-center h-full text-gray-400 ${product.image_url ? 'hidden' : ''}`}>
+                <div className={`flex items-center justify-center h-full text-gray-400 ${product.image_url && !imageFailed ? 'hidden' : ''}`}>
                   <svg className="w-32 h-32" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M9.75 17L9 20l-1 1h8l-1-1-.75-3M3 13h18M5 17h14a2 2 0 002-2V5a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
                   </svg>
@@ -246,9 +237,9 @@ export default function ProductDetailPage() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8">
               <h3 className="text-lg font-bold text-gray-900 mb-4">Where to Buy</h3>
               <div className="space-y-3">
-                {currentPrices.map((price, index) => (
+                {currentListings.map((listing, index) => (
                   <div 
-                    key={price.store_name}
+                    key={`${listing.store_name}-${listing.product_url}`}
                     className={`flex items-center justify-between p-4 rounded-lg border-2 transition-all ${
                       index === 0 
                         ? 'border-green-500 bg-green-50' 
@@ -262,21 +253,33 @@ export default function ProductDetailPage() {
                         </div>
                       )}
                       <div>
-                        <p className="font-semibold text-gray-900">{price.store_name}</p>
+                        <p className="font-semibold text-gray-900">{listing.store_name}</p>
                         <p className="text-xs text-gray-500">
-                          Updated {new Date(price.date).toLocaleDateString()}
+                          Updated {new Date(listing.scraped_at).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className={`text-xl font-bold ${index === 0 ? 'text-green-700' : 'text-gray-900'}`}>
-                        {price.price.toFixed(2)} TND
+                        {(listing.final_price as number).toFixed(2)} TND
                       </p>
-                      {index > 0 && (
+                      {index > 0 && currentListings[0]?.final_price != null && (
                         <p className="text-xs text-red-600">
-                          +{(price.price - currentPrices[0].price).toFixed(2)} TND
+                          +{(((listing.final_price as number) - (currentListings[0].final_price as number))).toFixed(2)} TND
                         </p>
                       )}
+                      <a
+                        href={listing.product_url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-flex items-center justify-end gap-1 text-xs font-semibold text-blue-600 hover:text-blue-700"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        Open offer
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5h7m0 0v7m0-7L10 16" />
+                        </svg>
+                      </a>
                     </div>
                   </div>
                 ))}
