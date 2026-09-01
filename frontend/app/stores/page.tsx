@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { getStores } from '@/lib/api';
+import AppHeader from '@/components/AppHeader';
 import type { Store } from '@/lib/types';
 
 export default function StoresPage() {
@@ -29,28 +30,7 @@ export default function StoresPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">PromoChecker</h1>
-              <p className="text-sm text-gray-600 mt-1">Find the best laptop deals in Tunisia</p>
-            </div>
-            <nav className="flex gap-6">
-              <a href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Products
-              </a>
-              <a href="/deals" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Best Deals
-              </a>
-              <a href="/stores" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">
-                Stores
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

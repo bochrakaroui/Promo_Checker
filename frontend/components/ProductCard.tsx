@@ -6,8 +6,12 @@ interface ProductCardProps {
 }
 
 export default function ProductCard({ product }: ProductCardProps) {
-  const savingsPercent = product.highest_price > 0 
-    ? Math.round(((product.highest_price - product.lowest_price) / product.highest_price) * 100)
+  const highestPrice = product.highest_price ?? product.lowest_price;
+  const displayName = product.model || product.name;
+  const ram = product.ram_gb ? `${product.ram_gb} GB` : product.ram_size;
+  const storage = product.storage_gb ? `${product.storage_gb} GB` : product.storage_capacity;
+  const savingsPercent = highestPrice > 0 
+    ? Math.round(((highestPrice - product.lowest_price) / highestPrice) * 100)
     : 0;
 
   return (
@@ -20,7 +24,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         {product.image_url ? (
           <img
             src={product.image_url}
-            alt={product.model || 'Product image'}
+            alt={displayName || 'Product image'}
             className="w-full h-full object-contain p-4 group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
               const target = e.currentTarget;
@@ -60,12 +64,12 @@ export default function ProductCard({ product }: ProductCardProps) {
       <div className="p-5">
         {/* Brand */}
         <p className="text-xs font-semibold text-teal-600 uppercase tracking-wide mb-1">
-          {product.brand}
+          {product.brand || 'Laptop'}
         </p>
         
         {/* Product Name */}
         <h3 className="text-base font-semibold text-gray-900 mb-3 line-clamp-2 group-hover:text-teal-600 transition-colors">
-          {product.model}
+          {displayName}
         </h3>
         
         {/* Specs */}
@@ -78,20 +82,20 @@ export default function ProductCard({ product }: ProductCardProps) {
               <span className="truncate">{product.cpu_type}</span>
             </div>
           )}
-          {product.ram_size && (
+          {ram && (
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 12h14M5 12a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v4a2 2 0 01-2 2M5 12a2 2 0 00-2 2v4a2 2 0 002 2h14a2 2 0 002-2v-4a2 2 0 00-2-2m-2-4h.01M17 16h.01" />
               </svg>
-              <span>{product.ram_size} RAM</span>
+              <span>{ram} RAM</span>
             </div>
           )}
-          {product.storage_capacity && (
+          {storage && (
             <div className="flex items-center gap-2">
               <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4" />
               </svg>
-              <span>{product.storage_capacity}</span>
+              <span>{storage}</span>
             </div>
           )}
         </div>
@@ -105,9 +109,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                 {product.lowest_price.toFixed(2)}
                 <span className="text-sm font-normal text-gray-500 ml-1">TND</span>
               </p>
-              {product.highest_price > product.lowest_price && (
+              {highestPrice > product.lowest_price && (
                 <p className="text-xs text-gray-400 line-through mt-1">
-                  {product.highest_price.toFixed(2)} TND
+                  {highestPrice.toFixed(2)} TND
                 </p>
               )}
             </div>

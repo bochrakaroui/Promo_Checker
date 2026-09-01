@@ -5,6 +5,7 @@ Endpoints for best deals and price comparisons
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from api.database import get_db_cursor
+from api.images import product_image_subquery
 from api.models import Deal
 
 router = APIRouter(prefix="/deals", tags=["Deals"])
@@ -56,7 +57,7 @@ async def get_best_deals(
                 (pr_high.final_price - pr_low.final_price) as price_difference,
                 ROUND(((pr_high.final_price - pr_low.final_price) / pr_high.final_price * 100)::numeric, 2) as savings_percent,
                 COUNT(DISTINCT pl.store_id) as store_count,
-                pl_low.image_url
+                {product_image_subquery("p.product_key")} as image_url
             FROM products p
             -- Get lowest price store
             JOIN product_listings pl_low ON p.product_key = pl_low.product_key
@@ -106,8 +107,7 @@ async def get_best_deals(
             GROUP BY 
                 p.product_key, p.brand, p.model, p.cpu_type, p.ram_gb, p.storage_gb,
                 s_low.store_name, pr_low.final_price,
-                s_high.store_name, pr_high.final_price,
-                pl_low.image_url
+                s_high.store_name, pr_high.final_price
             HAVING 1=1{having_clause}
             ORDER BY price_difference DESC
             LIMIT %s
@@ -182,8 +182,8 @@ async def get_deals_by_brand(
     """
     
     with get_db_cursor() as cursor:
-        query = """
-            SELECT 
+        query = f"""
+            SELECT
                 p.product_key,
                 p.brand,
                 p.model,
@@ -197,7 +197,7 @@ async def get_deals_by_brand(
                 (pr_high.final_price - pr_low.final_price) as price_difference,
                 ROUND(((pr_high.final_price - pr_low.final_price) / pr_high.final_price * 100)::numeric, 2) as savings_percent,
                 COUNT(DISTINCT pl.store_id) as store_count,
-                pl_low.image_url
+                {product_image_subquery("p.product_key")} as image_url
             FROM products p
             JOIN product_listings pl_low ON p.product_key = pl_low.product_key
             JOIN stores s_low ON pl_low.store_id = s_low.store_id
@@ -245,8 +245,7 @@ async def get_deals_by_brand(
             GROUP BY 
                 p.product_key, p.brand, p.model, p.cpu_type, p.ram_gb, p.storage_gb,
                 s_low.store_name, pr_low.final_price,
-                s_high.store_name, pr_high.final_price,
-                pl_low.image_url
+                s_high.store_name, pr_high.final_price
             ORDER BY price_difference DESC
             LIMIT %s
         """

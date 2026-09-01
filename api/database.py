@@ -13,13 +13,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Database configuration
-DB_CONFIG = {
-    'dbname': os.getenv('DB_NAME', 'promochecker'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'postgres'),
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', 5432))
-}
+# Prefer DATABASE_URL (useful for Supabase), fallback to individual DB_* vars.
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    DB_CONFIG = {
+        'dsn': DATABASE_URL
+    }
+else:
+    DB_CONFIG = {
+        'dbname': os.getenv('DB_NAME', 'promochecker'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'postgres'),
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': int(os.getenv('DB_PORT', 5432))
+    }
 
 # Connection pool (min 1, max 10 connections)
 try:

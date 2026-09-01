@@ -2,7 +2,7 @@
 PromoChecker - Automated Scraper Runner
 Runs all spiders and imports data to database
 """
-import os
+import sys
 import subprocess
 import json
 from datetime import datetime
@@ -10,6 +10,11 @@ from pathlib import Path
 
 # Get project root directory
 PROJECT_ROOT = Path(__file__).parent.parent
+
+# Always reuse the interpreter running this script. Hardcoding venv/ paths
+# breaks anywhere the project isn't installed in a local venv (CI, Docker,
+# a scheduled task using a system Python).
+PYTHON_EXE = sys.executable
 
 
 def run_spider(spider_name: str, output_file: str) -> bool:
@@ -36,7 +41,7 @@ def run_spider(spider_name: str, output_file: str) -> bool:
         
         # Run scrapy spider
         result = subprocess.run(
-            ['scrapy', 'crawl', spider_name, '-o', output_file],
+            [PYTHON_EXE, '-m', 'scrapy', 'crawl', spider_name, '-o', output_file],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
@@ -79,15 +84,9 @@ def run_normalization() -> bool:
     print(f"{'='*60}")
     
     try:
-        # Get Python executable from venv
-        if os.name == 'nt':  # Windows
-            python_exe = PROJECT_ROOT / 'venv' / 'Scripts' / 'python.exe'
-        else:  # Linux/Mac
-            python_exe = PROJECT_ROOT / 'venv' / 'bin' / 'python'
-        
         # Run normalization script
         result = subprocess.run(
-            [str(python_exe), 'normalize_all.py'],
+            [PYTHON_EXE, 'normalize_all.py'],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
@@ -125,15 +124,9 @@ def import_to_database() -> bool:
     print(f"{'='*60}")
     
     try:
-        # Get Python executable from venv
-        if os.name == 'nt':  # Windows
-            python_exe = PROJECT_ROOT / 'venv' / 'Scripts' / 'python.exe'
-        else:  # Linux/Mac
-            python_exe = PROJECT_ROOT / 'venv' / 'bin' / 'python'
-        
         # Run database import script
         result = subprocess.run(
-            [str(python_exe), 'database/import_to_db.py'],
+            [PYTHON_EXE, 'database/import_to_db.py'],
             cwd=PROJECT_ROOT,
             capture_output=True,
             text=True,
@@ -173,10 +166,12 @@ def run_full_pipeline():
     print(f"{'#'*60}")
     
     # Define spiders and their output files
+    # Output names must match the inputs expected by normalize_all.py,
+    # otherwise normalization silently re-processes the previous run's files.
     spiders = [
-        ('mytekproducts', 'mytek_laptops.json'),
+        ('mytekproducts', 'products.json'),
         ('tunisianet_laptops', 'tunisianet_laptops.json'),
-        ('spacenetproducts', 'spacenet_laptops.json')
+        ('spacenetproducts', 'spacenet_promotions.json')
     ]
     
     # Track results
@@ -231,11 +226,15 @@ def run_full_pipeline():
         print(f"\n Pipeline completed successfully!")
     else:
         print(f"\n  Pipeline completed with some failures")
-    
+
     print(f"{'#'*60}\n")
-    
+
+    results['success'] = all_success
     return results
 
 
 if __name__ == "__main__":
-    run_full_pipeline()
+    # Exit non-zero on failure so schedulers (GitHub Actions, Task Scheduler,
+    # cron) report a red run instead of silently "succeeding".
+    outcome = run_full_pipeline()
+    sys.exit(0 if outcome.get('success') else 1)

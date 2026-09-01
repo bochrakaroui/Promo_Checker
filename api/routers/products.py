@@ -5,7 +5,9 @@ Endpoints for product search, filters, and details
 from typing import List, Optional
 from fastapi import APIRouter, HTTPException, Query
 from api.database import get_db_cursor
+from api.images import PRODUCT_IMAGES_CTE
 from api.models import ProductSummary, ProductDetail, ProductListing, PaginatedResponse, ProductFilters
+from PromoChecker.images import is_product_image
 import math
 
 router = APIRouter(prefix="/products", tags=["Products"])
@@ -104,20 +106,14 @@ async def get_products(
                 SELECT 
                     cbp.product_key,
                     MIN(cbp.final_price) as lowest_price,
+                    MAX(cbp.final_price) as highest_price,
                     COUNT(DISTINCT cbp.store_name) as store_count,
                     (ARRAY_AGG(cbp.store_name ORDER BY cbp.final_price ASC))[1] as best_store
                 FROM current_best_prices cbp
                 WHERE cbp.final_price IS NOT NULL
                 GROUP BY cbp.product_key
             ),
-            product_images AS (
-                SELECT DISTINCT ON (pl.product_key)
-                    pl.product_key,
-                    pl.image_url
-                FROM product_listings pl
-                WHERE pl.image_url IS NOT NULL
-                ORDER BY pl.product_key, pl.listing_id
-            )
+            {PRODUCT_IMAGES_CTE}
             SELECT DISTINCT
                 p.product_key,
                 p.name,
@@ -128,6 +124,7 @@ async def get_products(
                 p.ram_gb,
                 p.storage_gb,
                 ps.lowest_price,
+                ps.highest_price,
                 ps.store_count,
                 ps.best_store,
                 pi.image_url
@@ -149,6 +146,22 @@ async def get_products(
         total_pages=total_pages,
         items=[ProductSummary(**product) for product in products]
     )
+
+
+@router.get("/filters/brands", response_model=List[str])
+async def get_product_brands():
+    """Return the available product brands for filter controls."""
+    with get_db_cursor() as cursor:
+        cursor.execute("""
+            SELECT DISTINCT INITCAP(TRIM(p.brand)) AS brand
+            FROM products p
+            JOIN current_best_prices cbp ON p.product_key = cbp.product_key
+            WHERE p.brand IS NOT NULL
+              AND TRIM(p.brand) <> ''
+              AND cbp.final_price IS NOT NULL
+            ORDER BY brand
+        """)
+        return [row['brand'] for row in cursor.fetchall()]
 
 
 @router.get("/{product_key}", response_model=ProductDetail)
@@ -203,22 +216,19 @@ async def get_product_detail(product_key: str):
         lowest_price = min(prices) if prices else None
         highest_price = max(prices) if prices else None
         
-        # Get image_url from listing with lowest price, or first available
+        # Pick the image from the cheapest listing that actually has a product
+        # photo; ignore brand logos and placeholders entirely, then fall back to
+        # any other listing with a real photo.
         image_url = None
-        if listings:
-            # Try to get image from listing with lowest price
-            sorted_listings = sorted(
-                [l for l in listings if l['final_price'] is not None],
-                key=lambda x: x['final_price']
-            )
-            if sorted_listings:
-                image_url = sorted_listings[0].get('image_url')
-            # Fallback to any listing with image_url
-            if not image_url:
-                for listing in listings:
-                    if listing.get('image_url'):
-                        image_url = listing['image_url']
-                        break
+        priced_first = sorted(
+            listings,
+            key=lambda l: (l['final_price'] is None, l['final_price'] or 0)
+        )
+        for listing in priced_first:
+            candidate = listing.get('image_url')
+            if is_product_image(candidate):
+                image_url = candidate
+                break
         
         return ProductDetail(
             **product,

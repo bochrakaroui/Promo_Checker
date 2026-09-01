@@ -1,0 +1,25 @@
+# Render blueprint for the PromoChecker FastAPI backend.
+# Deploy: render.com -> New -> Blueprint -> pick this repo.
+#
+# The frontend goes to Vercel and the weekly scrape runs in GitHub Actions
+# (.github/workflows/weekly-scrape.yml); this service only serves the API.
+services:
+  - type: web
+    name: promochecker-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    envVars:
+      # Supabase connection string - set this in the Render dashboard.
+      - key: DATABASE_URL
+        sync: false
+      # Your deployed frontend, e.g. https://promochecker.vercel.app
+      - key: ALLOWED_ORIGINS
+        sync: false
+      # Scraping is handled by GitHub Actions, not by the API process.
+      - key: SCRAPE_ENABLED
+        value: "false"
+      - key: PYTHON_VERSION
+        value: "3.12.7"

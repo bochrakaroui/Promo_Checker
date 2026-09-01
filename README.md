@@ -44,10 +44,55 @@ Run the full pipeline from the repo root:
 python automation/run_scrapers.py
 ```
 
+## Scheduling (automatic weekly scraping)
+
+The pipeline runs **every Sunday at 03:00 (Africa/Tunis)** by default. The
+schedule lives in `automation/scheduler.py` and starts automatically with the
+API, so it only runs while `uvicorn` is running.
+
+Override the timing in `.env`:
+
+```ini
+SCRAPE_ENABLED=true       # false to turn the scheduler off
+SCRAPE_DAY_OF_WEEK=sun    # mon..sun, or * for every day
+SCRAPE_HOUR=3             # 0-23
+SCRAPE_MINUTE=0           # 0-59
+SCRAPE_TIMEZONE=Africa/Tunis
+```
+
+Run the scheduler on its own, without the API:
+
+```powershell
+python automation/scheduler.py          # wait for the next scheduled run
+python automation/scheduler.py --now    # scrape once immediately, then keep waiting
+```
+
+### Running it without keeping a process alive (Windows)
+
+The in-process scheduler stops when the API stops. To scrape weekly even when
+nothing is running, register a Windows scheduled task instead (and set
+`SCRAPE_ENABLED=false` so the job doesn't run twice):
+
+```powershell
+schtasks /Create /TN "PromoChecker Weekly Scrape" /SC WEEKLY /D SUN /ST 03:00 `
+  /TR "'C:\Users\Bochra\PromoChecker\venv\Scripts\python.exe' 'C:\Users\Bochra\PromoChecker\automation\run_scrapers.py'" `
+  /RL HIGHEST /F
+```
+
+Useful follow-ups: `schtasks /Run /TN "PromoChecker Weekly Scrape"` to test it
+now, `schtasks /Query /TN "PromoChecker Weekly Scrape" /V /FO LIST` to see the
+next run and last result, `schtasks /Delete /TN "PromoChecker Weekly Scrape" /F`
+to remove it.
+
 ## Database
 - Schema: `database/schema.sql`
 - Import script: `database/import_to_db.py`
 - Guides: `database/README.md` and `database/QUICKSTART.md`
+
+## Deployment
+
+See [DEPLOYMENT.md](DEPLOYMENT.md) — Supabase (database), Render (API), Vercel
+(frontend), GitHub Actions (weekly scrape).
 
 ## Environment variables
 - Backend: copy `.env.example` → `.env` and fill in DB settings

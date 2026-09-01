@@ -6,46 +6,66 @@ import re
 import json
 from typing import Dict, Any, Optional, List
 
+from PromoChecker.images import clean_image_url
+
+
+# A price can never exceed this; anything above means the string was misread.
+MAX_PLAUSIBLE_PRICE = 1_000_000
+
 
 def normalize_price(price_string: str) -> Optional[float]:
     """
     Normalize price from various formats to float
-    Handles: "1,459 DT", "1 399,000 DT", "1.399,000 DT", "429,000 DT"
-    Also handles Unicode spaces: \xa0, \u202f, etc.
-    
+
+    Tunisian stores quote dinars with 3-decimal millimes and use a space
+    (often \xa0 or \u202f) as the thousands separator:
+        "1 099,000 DT"  (Tunisianet, Spacenet) -> 1099.0
+        "1099.000 DT"   (Mytek)                -> 1099.0
+        "1.399,000 DT"                         -> 1399.0
+        "29,000 DT"     (a 29 dinar accessory) -> 29.0
+        "1459 DT"                              -> 1459.0
+
     Args:
         price_string: Raw price string from scraper
-        
+
     Returns:
         Float price value or None if invalid
     """
-    if not price_string or price_string.strip() == "":
+    if not price_string or not str(price_string).strip():
         return None
-    
-    # Remove "DT" and any extra spaces (including Unicode spaces)
-    price_clean = price_string.replace("DT", "").strip()
-    
-    # Remove all types of spaces (regular space, non-breaking space \xa0, narrow no-break space \u202f)
+
+    # Drop the currency and every kind of space (spaces only ever separate
+    # thousands here, never decimals).
+    price_clean = re.sub(r'(?i)\bdt\b|dinar[s]?', '', str(price_string))
     price_clean = re.sub(r'[\s\xa0\u202f\u2009\u200a]+', '', price_clean)
-    
-    # Handle different formats:
-    # "1,459" -> 1459.0
-    # "1.399,000" -> 1399.0
-    # "429,000" -> 429.0
-    
-    # If there's a comma followed by 3 digits at the end, it's the decimal separator for millimes
-    if re.search(r',\d{3}$', price_clean):
-        # Format: "429,000" or "1.399,000"
-        # Remove dots (thousands separator) and treat comma as decimal
-        price_clean = price_clean.replace(".", "")
-        price_clean = price_clean.replace(",", ".")
-        return float(price_clean)
+    price_clean = re.sub(r'[^\d.,]', '', price_clean)
+
+    if not price_clean or not any(c.isdigit() for c in price_clean):
+        return None
+
+    last_dot = price_clean.rfind('.')
+    last_comma = price_clean.rfind(',')
+    decimal_pos = max(last_dot, last_comma)
+
+    if decimal_pos == -1:
+        # Plain integer: "1459"
+        value = float(price_clean)
     else:
-        # Format: "1,459" or "1459"
-        # Comma is thousands separator, remove it
-        price_clean = price_clean.replace(",", "")
-        price_clean = price_clean.replace(".", "")
-        return float(price_clean)
+        decimals = len(price_clean) - decimal_pos - 1
+        if decimals == 3 or decimals in (1, 2):
+            # Trailing separator is the decimal point (millimes or centimes);
+            # everything before it is grouping. "1.399,000" -> 1399.000
+            integer_part = re.sub(r'[.,]', '', price_clean[:decimal_pos])
+            value = float(f"{integer_part}.{price_clean[decimal_pos + 1:]}")
+        else:
+            # Separators are grouping only: "1,459,000" -> 1459000
+            value = float(re.sub(r'[.,]', '', price_clean))
+
+    if value <= 0 or value > MAX_PLAUSIBLE_PRICE:
+        # Better to record no price than a value that is off by 1000x.
+        return None
+
+    return value
 
 
 def normalize_product_name(name: str) -> str:
@@ -420,6 +440,14 @@ def standardize_fields(raw_product: Dict[str, Any], source: str) -> Dict[str, An
     # Extract specs
     specs = extract_specs(name)
     
+    # Product image: accept whichever key the spider used, but never fall back
+    # to `brand_image` - that is the manufacturer logo, not the product photo.
+    image = None
+    for key in ('image', 'image_url', 'img', 'thumbnail'):
+        image = clean_image_url(raw_product.get(key))
+        if image:
+            break
+
     # Base standardized product
     standardized = {
         'name': clean_name,
@@ -428,7 +456,8 @@ def standardize_fields(raw_product: Dict[str, Any], source: str) -> Dict[str, An
         'product_key': generate_product_key(specs),
         'specs': specs,
         'link': raw_product.get('link', ''),
-        'image': raw_product.get('image', raw_product.get('brand_image', '')),
+        'image': image,
+        'brand_image': raw_product.get('brand_image') or None,
     }
     
     # Price handling based on source

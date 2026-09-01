@@ -1,5 +1,7 @@
 import scrapy
 
+from PromoChecker.images import extract_image_url
+
 
 class TunisianetLaptopsSpider(scrapy.Spider):
     name = "tunisianet_laptops"
@@ -19,12 +21,30 @@ class TunisianetLaptopsSpider(scrapy.Spider):
     def parse(self, response):
         # Chaque bloc produit
         for product in response.css("div.thumbnail-container"):
-            link = product.css("a.thumbnail.product-thumbnail.first-img::attr(href)").get()
-            full_link = response.urljoin(link) if link else None
-            "link": full_link
-            image = product.css(
-                "a.thumbnail.product-thumbnail.first-img img::attr(src)"
-            ).get()
+            # The listing markup dropped the ".first-img" class, so match the
+            # thumbnail anchor itself and fall back to the title link.
+            link = (
+                product.css("a.thumbnail.product-thumbnail::attr(href)").get()
+                or product.css("h2.product-title a::attr(href)").get()
+            )
+
+            # Prefer the full-size PrestaShop image, then the card thumbnail;
+            # never the "second-img" hover shot or the manufacturer logo.
+            image = extract_image_url(
+                product,
+                response,
+                selectors=[
+                    "a.thumbnail.product-thumbnail img.thumbnail-img",
+                    "a.thumbnail.product-thumbnail img:not(.second-img)",
+                    "img.thumbnail-img",
+                ],
+            )
+
+            if not image:
+                self.logger.warning(
+                    "No product image found for %s",
+                    (product.css("h2.product-title a::text").get() or "")[:60],
+                )
 
             title = product.css(
                 "h2.product-title a::text"
@@ -65,7 +85,7 @@ class TunisianetLaptopsSpider(scrapy.Spider):
             yield {
                 "name": (title or "").strip(),
                 "link": response.urljoin(link) if link else None,
-                "image": response.urljoin(image) if image else None,
+                "image": image,
                 "reference": reference.strip("[]") if reference else None,
                 "description": short_desc,
                 "price": price.strip() if price else None,

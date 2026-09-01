@@ -3,8 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import AppHeader from '@/components/AppHeader';
 import { getDeals } from '@/lib/api';
-import type { Deal, PaginatedResponse } from '@/lib/types';
+import type { Deal } from '@/lib/types';
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<Deal[]>([]);
@@ -22,7 +23,7 @@ export default function DealsPage() {
     try {
       setLoading(true);
       setError(null);
-      const response: any = await getDeals(minDifference, page, 20);
+      const response = await getDeals(minDifference, page, 20);
       console.log('Deals response:', response);
       
       // Handle both array response and paginated response
@@ -43,28 +44,7 @@ export default function DealsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">PromoChecker</h1>
-              <p className="text-sm text-gray-600 mt-1">Find the best laptop deals in Tunisia</p>
-            </div>
-            <nav className="flex gap-6">
-              <a href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Products
-              </a>
-              <a href="/deals" className="text-blue-600 font-semibold hover:text-blue-700 transition-colors">
-                Best Deals
-              </a>
-              <a href="/stores" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Stores
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -205,7 +185,7 @@ export default function DealsPage() {
                                     {deal.price_difference.toFixed(2)} TND
                                   </p>
                                   <p className="text-sm text-green-600 mt-1">
-                                    That's {deal.savings_percent.toFixed(0)}% off!
+                                    That&apos;s {deal.savings_percent.toFixed(0)}% off!
                                   </p>
                                 </div>
                                 <div className="bg-white rounded-full px-6 py-3 shadow-md">

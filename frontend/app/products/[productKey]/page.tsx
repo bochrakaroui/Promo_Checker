@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
+import AppHeader from '@/components/AppHeader';
 import { getProductDetail } from '@/lib/api';
 import type { ProductDetail } from '@/lib/types';
 
@@ -65,28 +66,7 @@ export default function ProductDetailPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-teal-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">PromoChecker</h1>
-              <p className="text-sm text-gray-600 mt-1">Find the best laptop deals in Tunisia</p>
-            </div>
-            <nav className="flex gap-6">
-              <a href="/" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Products
-              </a>
-              <a href="/deals" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Best Deals
-              </a>
-              <a href="/stores" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Stores
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -110,7 +90,7 @@ export default function ProductDetailPage() {
                 {product.image_url && !imageFailed ? (
                   <Image
                     src={product.image_url}
-                    alt={product.model}
+                    alt={product.model || product.name}
                     fill
                     className="object-contain p-4"
                     onError={() => setImageFailed(true)}
@@ -128,7 +108,7 @@ export default function ProductDetailPage() {
                 {product.brand}
               </p>
               <h1 className="text-2xl font-bold text-gray-900 mb-6">
-                {product.model}
+                {product.model || product.name}
               </h1>
 
               {/* Specifications */}
