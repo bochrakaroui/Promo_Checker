@@ -55,6 +55,7 @@ class ProductDetail(ProductBase):
 class ProductSummary(ProductBase):
     """Product summary for list views"""
     lowest_price: Optional[float] = None
+    highest_price: Optional[float] = None
     store_count: int = 0
     best_store: Optional[str] = None
     image_url: Optional[str] = None

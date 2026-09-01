@@ -2,6 +2,8 @@
 PromoChecker API - Main Application
 FastAPI backend for price comparison and deal tracking
 """
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from api.database import test_connection, connection_pool
@@ -19,11 +21,22 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS middleware - Allow frontend access
+# CORS middleware - Allow frontend access.
+# In production set ALLOWED_ORIGINS to your deployed frontend, e.g.
+#   ALLOWED_ORIGINS=https://promochecker.vercel.app
+# Comma-separated for several origins; defaults to "*" for local development.
+ALLOWED_ORIGINS = [
+    origin.strip()
+    for origin in os.getenv("ALLOWED_ORIGINS", "*").split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change to specific domains in production
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    # "*" and credentials are mutually exclusive per the CORS spec: browsers
+    # reject the wildcard when credentials are allowed.
+    allow_credentials=ALLOWED_ORIGINS != ["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )

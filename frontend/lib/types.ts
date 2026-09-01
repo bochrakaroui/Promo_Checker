@@ -2,17 +2,22 @@
 
 export interface ProductSummary {
   product_key: string;
-  model: string;
-  brand: string;
+  name: string;
+  model: string | null;
+  brand: string | null;
   lowest_price: number;
-  highest_price: number;
+  highest_price: number | null;
   store_count: number;
   best_store: string;
   image_url: string | null;
   cpu_type: string | null;
-  ram_size: string | null;
-  storage_capacity: string | null;
-  display_size: string | null;
+  cpu_generation?: string | null;
+  ram_gb: number | null;
+  storage_gb: number | null;
+  // Kept optional for compatibility with older API deployments.
+  ram_size?: string | null;
+  storage_capacity?: string | null;
+  display_size?: string | null;
 }
 
 export interface PaginatedResponse<T> {
@@ -42,16 +47,20 @@ export interface ProductListing {
 
 export interface ProductDetail {
   product_key: string;
-  model: string;
-  brand: string;
+  name: string;
+  model: string | null;
+  brand: string | null;
   cpu_type: string | null;
-  ram_size: string | null;
-  storage_capacity: string | null;
-  display_size: string | null;
-  display_technology: string | null;
-  graphics_card: string | null;
-  operating_system: string | null;
-  color: string | null;
+  cpu_generation?: string | null;
+  ram_gb: number | null;
+  storage_gb: number | null;
+  ram_size?: string | null;
+  storage_capacity?: string | null;
+  display_size?: string | null;
+  display_technology?: string | null;
+  graphics_card?: string | null;
+  operating_system?: string | null;
+  color?: string | null;
   lowest_price: number;
   highest_price: number;
   store_count: number;
@@ -64,7 +73,7 @@ export interface ProductDetail {
 export interface Deal {
   product_key: string;
   model: string;
-  brand: string;
+  brand: string | null;
   lowest_price: number;
   highest_price: number;
   price_difference: number;

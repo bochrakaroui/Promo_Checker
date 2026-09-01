@@ -8,16 +8,26 @@ from psycopg2.extras import execute_values
 from datetime import datetime
 from typing import List, Dict, Any
 import os
+from dotenv import load_dotenv
 
+
+# Load environment variables
+load_dotenv()
 
 # Database configuration - reads from environment or uses defaults
-DB_CONFIG = {
-    'dbname': os.getenv('DB_NAME', 'promochecker'),
-    'user': os.getenv('DB_USER', 'postgres'),
-    'password': os.getenv('DB_PASSWORD', 'postgres'),  #  SET DB_PASSWORD environment variable
-    'host': os.getenv('DB_HOST', 'localhost'),
-    'port': int(os.getenv('DB_PORT', 5432))
-}
+DATABASE_URL = os.getenv('DATABASE_URL')
+if DATABASE_URL:
+    DB_CONFIG = {
+        'dsn': DATABASE_URL
+    }
+else:
+    DB_CONFIG = {
+        'dbname': os.getenv('DB_NAME', 'promochecker'),
+        'user': os.getenv('DB_USER', 'postgres'),
+        'password': os.getenv('DB_PASSWORD', 'postgres'),
+        'host': os.getenv('DB_HOST', 'localhost'),
+        'port': int(os.getenv('DB_PORT', 5432))
+    }
 
 
 def get_db_connection():
@@ -112,12 +122,16 @@ def import_listings_and_prices(conn, normalized_data: List[Dict[str, Any]], sour
         if not product_key:
             continue
         
+        # Store NULL (not '') for a missing image so the API's "has an image"
+        # filters and COALESCE fallbacks behave correctly.
+        image_url = (item.get('image') or '').strip() or None
+
         listing = (
             product_key,
             store_id,
             item.get('original_name', ''),
             item.get('link', ''),
-            item.get('image', ''),
+            image_url,
             item.get('sku', ''),
             item.get('reference', ''),
             item.get('availability', ''),
@@ -131,7 +145,9 @@ def import_listings_and_prices(conn, normalized_data: List[Dict[str, Any]], sour
             VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
             ON CONFLICT (product_key, store_id, product_url) DO UPDATE SET
                 source_name = EXCLUDED.source_name,
-                image_url = EXCLUDED.image_url,
+                -- Keep the previous image when this scrape found none, so a
+                -- temporary selector/render failure doesn't blank the card.
+                image_url = COALESCE(EXCLUDED.image_url, product_listings.image_url),
                 sku = EXCLUDED.sku,
                 reference = EXCLUDED.reference,
                 availability = EXCLUDED.availability,

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import ProductCard from '@/components/ProductCard';
-import { getProducts } from '@/lib/api';
+import AppHeader from '@/components/AppHeader';
+import { getBrands, getProducts } from '@/lib/api';
 import type { ProductSummary, PaginatedResponse } from '@/lib/types';
 
 export default function Home() {
@@ -12,12 +13,19 @@ export default function Home() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState('lowest_price');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [brands, setBrands] = useState<string[]>([]);
+  const [selectedBrand, setSelectedBrand] = useState('');
+  const [sortBy, setSortBy] = useState('price');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   useEffect(() => {
     loadProducts();
-  }, [page, sortBy, sortOrder]);
+  }, [page, sortBy, sortOrder, appliedSearch, selectedBrand]);
+
+  useEffect(() => {
+    getBrands().then(setBrands).catch((err) => console.error('Failed to load brands', err));
+  }, []);
 
   const loadProducts = async () => {
     try {
@@ -28,7 +36,8 @@ export default function Home() {
         20,
         sortBy,
         sortOrder,
-        searchQuery || undefined
+        appliedSearch || undefined,
+        selectedBrand || undefined
       );
       setProducts(response.items);
       setTotalPages(response.total_pages);
@@ -43,33 +52,12 @@ export default function Home() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     setPage(1);
-    loadProducts();
+    setAppliedSearch(searchQuery.trim());
   };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-blue-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">PromoChecker</h1>
-              <p className="text-sm text-gray-600 mt-1">Find the best laptop deals in Tunisia</p>
-            </div>
-            <nav className="flex gap-6">
-              <a href="/" className="text-teal-600 font-semibold hover:text-teal-700 transition-colors">
-                Products
-              </a>
-              <a href="/deals" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Best Deals
-              </a>
-              <a href="/stores" className="text-gray-600 hover:text-gray-900 transition-colors">
-                Stores
-              </a>
-            </nav>
-          </div>
-        </div>
-      </header>
+      <AppHeader />
 
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -97,16 +85,31 @@ export default function Home() {
               </div>
             </div>
 
+            {/* Brand Filter */}
+            <select
+              value={selectedBrand}
+              onChange={(e) => {
+                setSelectedBrand(e.target.value);
+                setPage(1);
+              }}
+              aria-label="Filter by brand"
+              className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
+            >
+              <option value="">All brands</option>
+              {brands.map((brand) => (
+                <option key={brand} value={brand}>{brand}</option>
+              ))}
+            </select>
+
             {/* Sort By */}
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value)}
               className="px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-teal-500 focus:border-transparent outline-none transition-all bg-white text-gray-900 font-medium"
             >
-              <option value="lowest_price">Price</option>
-              <option value="model">Name</option>
+              <option value="price">Price</option>
+              <option value="name">Name</option>
               <option value="brand">Brand</option>
-              <option value="store_count">Availability</option>
             </select>
 
             {/* Sort Order */}

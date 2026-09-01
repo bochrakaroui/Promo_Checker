@@ -1,0 +1,53 @@
+name: Weekly scrape
+
+# Vercel cannot run this pipeline (Playwright needs a real Chromium and the
+# crawl takes minutes), so the scheduled scraping lives here instead.
+on:
+  schedule:
+    # 02:00 UTC on Sunday = 03:00 Africa/Tunis (UTC+1, no DST).
+    # GitHub cron is always UTC.
+    - cron: "0 2 * * 0"
+  workflow_dispatch:  # lets you run it manually from the Actions tab
+
+# Never let two pipeline runs write to the database at once.
+concurrency:
+  group: scrape
+  cancel-in-progress: false
+
+jobs:
+  scrape:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      # The scheduler is this workflow; don't let anything start a second one.
+      SCRAPE_ENABLED: "false"
+      PYTHONUTF8: "1"
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Chromium for Playwright
+        run: python -m playwright install --with-deps chromium
+
+      - name: Run pipeline (scrape -> normalize -> import)
+        run: python automation/run_scrapers.py
+
+      - name: Upload scraped data for inspection
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: scraped-data
+          path: |
+            *.json
+          if-no-files-found: warn
+          retention-days: 14

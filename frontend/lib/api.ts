@@ -28,7 +28,12 @@ export async function getProducts(
   sortBy: string = 'lowest_price',
   sortOrder: 'asc' | 'desc' = 'asc',
   search?: string,
-  brand?: string
+  brand?: string,
+  minPrice?: number,
+  maxPrice?: number,
+  minRam?: number,
+  minStorage?: number,
+  cpuType?: string
 ): Promise<PaginatedResponse<ProductSummary>> {
   const params = new URLSearchParams({
     page: page.toString(),
@@ -39,8 +44,17 @@ export async function getProducts(
   
   if (search) params.append('search', search);
   if (brand) params.append('brand', brand);
+  if (minPrice !== undefined) params.append('min_price', minPrice.toString());
+  if (maxPrice !== undefined) params.append('max_price', maxPrice.toString());
+  if (minRam !== undefined) params.append('min_ram', minRam.toString());
+  if (minStorage !== undefined) params.append('min_storage', minStorage.toString());
+  if (cpuType) params.append('cpu_type', cpuType);
   
   return fetchAPI<PaginatedResponse<ProductSummary>>(`/api/products?${params}`);
+}
+
+export async function getBrands(): Promise<string[]> {
+  return fetchAPI<string[]>('/api/products/filters/brands');
 }
 
 export async function getProductDetail(productKey: string): Promise<ProductDetail> {
